@@ -1,10 +1,9 @@
-name: Build Driver Android APK
+name: Build Driver Android APK V5.5
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
@@ -14,8 +13,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract V3 project
-        run: unzip -q Truck-Tracking-Command-Center-V3.zip
+      - name: Find and extract V5.5 project ZIP
+        shell: bash
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname '*V5.5*WhatsApp*OneTap*.zip' | head -n 1)"
+          if [ -z "$ZIP" ]; then
+            echo "V5.5 WhatsApp OneTap ZIP not found in repository root"
+            ls -la
+            exit 1
+          fi
+
+          rm -rf extracted-v55
+          mkdir extracted-v55
+          unzip -q "$ZIP" -d extracted-v55
+
+          DRIVER_DIR="$(find extracted-v55 -type d -name driver-android | head -n 1)"
+          if [ -z "$DRIVER_DIR" ]; then
+            echo "driver-android folder not found"
+            exit 1
+          fi
+
+          echo "DRIVER_DIR=$DRIVER_DIR" >> "$GITHUB_ENV"
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -29,11 +48,13 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build Driver APK
-        working-directory: Truck-Tracking-Command-Center-V3/driver-android
-        run: gradle assembleDebug --stacktrace
+        shell: bash
+        run: |
+          cd "$DRIVER_DIR"
+          gradle assembleDebug --stacktrace
 
       - name: Upload Driver APK
         uses: actions/upload-artifact@v4
         with:
-          name: Truck-Tracker-Driver-APK
-          path: Truck-Tracking-Command-Center-V3/driver-android/app/build/outputs/apk/debug/app-debug.apk
+          name: Truck-Tracker-Driver-V5.5-WhatsApp-OneTap-APK
+          path: ${{ env.DRIVER_DIR }}/app/build/outputs/apk/debug/app-debug.apk
