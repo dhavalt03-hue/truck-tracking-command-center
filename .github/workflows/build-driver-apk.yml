@@ -34,15 +34,21 @@ jobs:
           mkdir extracted-v64
           unzip -q "$ZIP" -d extracted-v64
 
-          DRIVER_DIR="$(find extracted-v64 -type d -name driver-android | head -n 1)"
+          echo "Extracted files:"
+          find extracted-v64 -maxdepth 4 -type f | head -100
+
+          DRIVER_DIR="$(find extracted-v64 -type f -name 'settings.gradle' -printf '%h\n' | head -n 1)"
 
           if [ -z "$DRIVER_DIR" ]; then
-            echo "ERROR: driver-android folder not found inside V6.4 ZIP"
-            find extracted-v64 -maxdepth 5 -type d -print
+            DRIVER_DIR="$(find extracted-v64 -type f -name 'settings.gradle.kts' -printf '%h\n' | head -n 1)"
+          fi
+
+          if [ -z "$DRIVER_DIR" ]; then
+            echo "ERROR: Android project root not found."
             exit 1
           fi
 
-          echo "Driver project: $DRIVER_DIR"
+          echo "Android project found at: $DRIVER_DIR"
           echo "DRIVER_DIR=$DRIVER_DIR" >> "$GITHUB_ENV"
 
       - name: Setup Java 17
@@ -66,6 +72,18 @@ jobs:
         shell: bash
         run: |
           cd "$DRIVER_DIR"
+
+          touch gradle.properties
+
+          if ! grep -q '^android.useAndroidX=' gradle.properties; then
+            echo "android.useAndroidX=true" >> gradle.properties
+          else
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties
+          fi
+
+          echo "===== gradle.properties ====="
+          cat gradle.properties
+
           gradle assembleDebug --stacktrace
 
       - name: Rename APK
@@ -80,4 +98,3 @@ jobs:
           name: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-APK
           path: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-Dhaval-Trivedi.apk
           if-no-files-found: error
- 
