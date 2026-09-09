@@ -1,9 +1,10 @@
-name: Build Driver Android APK V5.5
+name: Build Truck Tracker Driver V6.4 APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    paths:
+      - '*V6.4*Accuracy*Persistent*.zip'
 
 jobs:
   build:
@@ -13,27 +14,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and extract V5.5 project ZIP
+      - name: Find and extract V6.4 Android project
         shell: bash
         run: |
           set -e
-          ZIP="$(find . -maxdepth 1 -type f -iname '*V5.5*WhatsApp*OneTap*.zip' | head -n 1)"
+
+          ZIP="$(find . -maxdepth 1 -type f -iname '*V6.4*Accuracy*Persistent*.zip' | head -n 1)"
+
           if [ -z "$ZIP" ]; then
-            echo "V5.5 WhatsApp OneTap ZIP not found in repository root"
+            echo "ERROR: V6.4 Accuracy Persistent ZIP not found."
+            echo "Repository files:"
             ls -la
             exit 1
           fi
 
-          rm -rf extracted-v55
-          mkdir extracted-v55
-          unzip -q "$ZIP" -d extracted-v55
+          echo "Using ZIP: $ZIP"
 
-          DRIVER_DIR="$(find extracted-v55 -type d -name driver-android | head -n 1)"
+          rm -rf extracted-v64
+          mkdir extracted-v64
+          unzip -q "$ZIP" -d extracted-v64
+
+          DRIVER_DIR="$(find extracted-v64 -type d -name driver-android | head -n 1)"
+
           if [ -z "$DRIVER_DIR" ]; then
-            echo "driver-android folder not found"
+            echo "ERROR: driver-android folder not found inside V6.4 ZIP"
+            find extracted-v64 -maxdepth 5 -type d -print
             exit 1
           fi
 
+          echo "Driver project: $DRIVER_DIR"
           echo "DRIVER_DIR=$DRIVER_DIR" >> "$GITHUB_ENV"
 
       - name: Setup Java 17
@@ -42,19 +51,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.9
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Setup Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.10.2'
 
-      - name: Build Driver APK
+      - name: Build V6.4 APK
         shell: bash
         run: |
           cd "$DRIVER_DIR"
           gradle assembleDebug --stacktrace
 
-      - name: Upload Driver APK
+      - name: Rename APK
+        shell: bash
+        run: |
+          cp "$DRIVER_DIR/app/build/outputs/apk/debug/app-debug.apk" \
+          "Truck-Tracker-Driver-V6.4-Accuracy-Persistent-Dhaval-Trivedi.apk"
+
+      - name: Upload V6.4 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Truck-Tracker-Driver-V5.5-WhatsApp-OneTap-APK
-          path: ${{ env.DRIVER_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          name: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-APK
+          path: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-Dhaval-Trivedi.apk
+          if-no-files-found: error
