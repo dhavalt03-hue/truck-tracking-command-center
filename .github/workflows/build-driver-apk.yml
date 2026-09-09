@@ -80,3 +80,4 @@ jobs:
           name: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-APK
           path: Truck-Tracker-Driver-V6.4-Accuracy-Persistent-Dhaval-Trivedi.apk
           if-no-files-found: error
+ 
